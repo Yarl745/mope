@@ -4,6 +4,8 @@ from scipy.stats import t, f
 import random as r
 from functools import partial
 import prettytable as p
+import re
+from decimal import Decimal
 
 m = 3
 prob = 0.95
@@ -71,6 +73,13 @@ def get_student_critical(prob, f3):
             return i
 
 
+def my_mean(sample):
+    # '[[1, 2], [3, 4]]' -> '1, 2, 3, 4' -> 2.5
+    digits_str: str = re.sub(r"[\[\],]+", '', str(sample))
+    digits = [float(digit_str) for digit_str in digits_str.split()]
+    return sum(digits) / len(digits)
+
+
 flag = True
 while (flag):
     table1 = p.PrettyTable()
@@ -81,18 +90,18 @@ while (flag):
         table1.add_column("Y{0}".format(i + 1), [j[i] for j in Y_exp])
     print("Нормалізована матриця:\n", table1)
 
-    mx_norm_list = [np.mean(i) for i in x_norm]
-    y_aver = [np.mean(i) for i in Y_exp]
-    my = np.mean(y_aver)
-    a1 = np.mean([x_norm[0][i] * y_aver[i] for i in range(N)])
-    a2 = np.mean([x_norm[1][i] * y_aver[i] for i in range(N)])
-    a3 = np.mean([x_norm[2][i] * y_aver[i] for i in range(N)])
-    a11 = np.mean([x_norm[0][i] ** 2 for i in range(N)])
-    a22 = np.mean([x_norm[1][i] ** 2 for i in range(N)])
-    a33 = np.mean([x_norm[2][i] ** 2 for i in range(N)])
-    a12 = np.mean([x_norm[0][i] * x_norm[1][i] for i in range(N)])
-    a13 = np.mean([x_norm[0][i] * x_norm[2][i] for i in range(N)])
-    a23 = np.mean([x_norm[1][i] * x_norm[2][i] for i in range(N)])
+    mx_norm_list = [my_mean(i) for i in x_norm]
+    y_aver = [my_mean(i) for i in Y_exp]
+    my = my_mean(y_aver)
+    a1 = my_mean([x_norm[0][i] * y_aver[i] for i in range(N)])
+    a2 = my_mean([x_norm[1][i] * y_aver[i] for i in range(N)])
+    a3 = my_mean([x_norm[2][i] * y_aver[i] for i in range(N)])
+    a11 = my_mean([x_norm[0][i] ** 2 for i in range(N)])
+    a22 = my_mean([x_norm[1][i] ** 2 for i in range(N)])
+    a33 = my_mean([x_norm[2][i] ** 2 for i in range(N)])
+    a12 = my_mean([x_norm[0][i] * x_norm[1][i] for i in range(N)])
+    a13 = my_mean([x_norm[0][i] * x_norm[2][i] for i in range(N)])
+    a23 = my_mean([x_norm[1][i] * x_norm[2][i] for i in range(N)])
     a21 = a12
     a31 = a13
     a32 = a23
