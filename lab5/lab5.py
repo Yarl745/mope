@@ -4,7 +4,7 @@ import pprint
 from scipy.stats import t, f
 import sklearn.linear_model as lm
 from functools import partial
-from time import time
+import time
 
 x_range = [[-6, 10], [-3, 5], [-4, 9]]
 x_sered_max = sum([x[1] for x in x_range]) / 3
@@ -113,14 +113,17 @@ def get_cohren_critical(prob, f1, f2):
 
 
 def cohren_crit(y, n, m):
+    start_time = time.time()
     y_var = [np.var(i) for i in y]
     Gp = max(y_var) / sum(y_var)
     Gt = get_cohren_critical(0.95, m - 1, n)
     if (Gp < Gt):
         print("\nДисперсії однорідні")
+        print("Час перевірки за критерієм Кохрена: ", time.time() - start_time)
         return True
     else:
         print("\nДисперсії не однорідні")
+        print("Час перевірки за критерієм Кохрена: ", time.time() - start_time)
         return False
 
 
@@ -130,6 +133,7 @@ student_teor = partial(t.ppf, q=1 - 0.025)
 
 
 def kriteriy_studenta(x, y, y_aver, n, m, B):
+    start_time = time.time()
     d = 0
     y_var = [np.var(i) for i in y]
     s_kv_aver = sum(y_var) / n
@@ -149,10 +153,12 @@ def kriteriy_studenta(x, y, y_aver, n, m, B):
             d += 1
     print("\nКоефіціенти після перевірки нуль гіпотези: ")
     print(B)
+    print("Час перевірки за критерієм Стьюдента: ", time.time() - start_time)
     return [B, d]
 
 
 def kriteriy_fishera(m, n, d, new_y_pract, y_avr, y):
+    start_time = time.time()
     f4 = n - d
     f3 = (m - 1) * n
     y_var = [np.var(i) for i in y]
@@ -164,9 +170,11 @@ def kriteriy_fishera(m, n, d, new_y_pract, y_avr, y):
         print("\nПрактичне значення:", pract)
         print("Теоретичне значення:", teor)
         print("\nРівняння регресії неадекватне")
+        print("Час перевірки за критерієм Фішера: ", time.time() - start_time)
         return [False, False]
     else:
         print("\nРівняння регресії адекватне")
+        print("Час перевірки за критерієм Фішера: ", time.time() - start_time)
         return [True, True]
 
 
@@ -177,7 +185,6 @@ if __name__ == "__main__":
     m = 3
     # поки не адекватно починаемо знову
     while not adekvat:
-        start = time()
         # поки не однорідно починаемо знову
         while not odnorid:
             x_matrix_norm, x_matrix, y, y_avr = create_plan_matrix(n, m)
@@ -192,5 +199,3 @@ if __name__ == "__main__":
         new_y_pract = get_new_y(x_matrix, new_B)
         # адекватність перевіряемо за критеріем фішера. приймае значення True або False
         adekvat, odnorid = kriteriy_fishera(m, n, 4, new_y_pract, y_avr, y)
-        end = time()
-        print(f'Час статичноi перевірки: {str(end - start)}\n\n\n')
