@@ -1,139 +1,196 @@
-import random as ran
-import math as ma
-import numpy
-from prettytable import PrettyTable
+from math import sqrt
+from random import randint
 
-table0 = PrettyTable()
-table0.field_names = (["Студент", "Группа"])
-name = "Копайло Ярослав"
-group = "ІВ-92"
-table0.add_row([name, group])
-print(table0)
+import pandas as pd
+from numpy.linalg import det
 
-def inf(count, mean):
-    array_x1 = [10, 60]
-    m = 5 + count
-    array_x2 = [-35, 15]
-    array_y = [(30 - 11) * 10, (20 - 11) * 10]
-    teta0 = ma.sqrt(2 * (2 * m - 2) / (m * (m - 4)))
-    matr_x = []
-    matr_x2 = []
-    matr_y = [[ran.randint(array_y[1], array_y[0]) for j in range(m)] for i in range(3)]
-    avey = []
-    sigma = []
-    array_fuv = []
-    array_a = []
-    array_aij = []
-    for i in range(3):
 
-        if i == 0:
-            matr_x.append([-1, -1])
-            matr_x2.append([min(array_x1), min(array_x2)])
-        elif i == 1:
-            matr_x.append([-1, 1])
-            matr_x2.append([min(array_x1), max(array_x2)])
-        elif i == 2:
-            matr_x.append([1, -1])
-            matr_x2.append([max(array_x1), min(array_x2)])
-    for i in range(len(matr_y)):
-        sumer = 0
-        temp = sum(matr_y[i]) / len(matr_y[i])
-        avey.append(temp)
-        for j in range(len(matr_y[i])):
-            sumer += (matr_y[i][j] - temp) ** 2
-        sigma.append(sumer / len(matr_y[i]))
-    array_fuv.append(sigma[0] / sigma[1])
-    array_fuv.append(sigma[2] / sigma[0])
-    array_fuv.append(sigma[2] / sigma[1])
-    array_tetas = [(m - 2) / m * array_fuv[i] for i in range(len(array_fuv))]
-    array_ruv = [ma.fabs(i - 1) / teta0 for i in array_tetas]
-    for i in range(len(array_ruv)):
-        if array_ruv[i] < 2:
-            mean = True
-            print("R{0}uv > 2".format(i))
-        else:
-            mean = False
-            print("R{0}uv < 2".format(i))
-    if mean:
-        trans = numpy.array(matr_x).transpose()
-        array_mx = [sum(trans[i]) / len(trans[i]) for i in range(2)]
-        my = sum(avey) / len(avey)
-        for i in range(2):
-            temp = 0
-            if i == 1:
-                for j in matr_x:
-                    temp += numpy.array(j).prod()
-                array_a.append(temp / 3)
-                temp = 0
-            for j in range(len(trans[i])):
-                temp += (trans[i][j] ** 2)
-            array_a.append(temp / 3)
-        for i in range(2):
-            temp = 0
-            for j in range(len(trans[i])):
-                temp += trans[i][j] * avey[j]
-            array_aij.append(temp / 3)
-        first = numpy.array(
-            [[1, array_mx[0], array_mx[1]], [array_mx[0], array_a[0], array_a[1]],
-             [array_mx[1], array_a[1], array_a[2]]])
-        second = numpy.array([my, array_aij[0], array_aij[1]])
-        res = numpy.linalg.solve(first, second)
-        array_delx = [(max(array_x1) - min(array_x1)) / 2, (max(array_x2) - min(array_x2)) / 2]
-        array_zerx = [sum(array_x1) / 2, sum(array_x2) / 2]
-        a0 = res[0] - res[1] * (array_zerx[0] / array_delx[0]) - res[2] * (array_zerx[1] / array_delx[1])
-        a1 = res[1] / array_delx[0]
-        a2 = res[2] / array_delx[1]
-        ta = PrettyTable()
-        ta.field_names = ["X1", "X2", "Y1", "Y2", "Y3", "Y4", "Y5"]
-        ta.add_rows(
+class RomanovskyCriterion:
+    m = 7
+    average_y = []
+    dispersion_y = []
+    f_uv = []
+    sigma_uv = []
+    r_uv = []
+    deviation = 0
+    romanovsky_coef_value = 0
+    criterion_table = {
+        (2, 3, 4): 1.72,
+        (5, 6, 7): 2.13,
+        (8, 9): 2.37,
+        (10, 11): 2.54,
+        (12, 13): 2.66,
+        (14, 15, 16, 17): 2.8,
+        (18, 19, 20): 2.96
+    }
+    x1 = [-1, -1, 1]
+    x2 = [-1, 1, -1]
+    use_max = 1
+
+    def __init__(self, var, x1_min, x1_max, x2_min, x2_max):
+        self.x2_max = x2_max
+        self.x2_min = x2_min
+        self.x1_max = x1_max
+        self.x1_min = x1_min
+        self.var = var
+
+        self.y_min = (20 - var) * 10
+        self.y_max = (30 - var) * 10
+
+        self.nx1 = [x1_min if self.x1[i] == -1 else x1_max for i in range(3)]
+        self.nx2 = [x2_min if self.x2[i] == -1 else x2_max for i in range(3)]
+
+        self.y_1 = [randint(self.y_min, self.y_max) for _ in range(self.m)]
+        self.y_2 = [randint(self.y_min, self.y_max) for _ in range(self.m)]
+        self.y_3 = [randint(self.y_min, self.y_max) for _ in range(self.m)]
+        self.y_lists = [self.y_1, self.y_2, self.y_3]
+
+    @staticmethod
+    def __create_table(f_names, rows):
+        n_df = {i: [] for i in f_names}
+        for row in rows:
+            for i, val in enumerate(n_df):
+                n_df[val].append(row[i])
+
+        df = pd.DataFrame(data=n_df)
+        print(df)
+
+    def __dispersion_calc(self, y_list, y_avg):
+        return sum([(i - y_avg) ** 2 for i in y_list]) / self.m
+
+    def __get_average_y(self):
+        return [
+            sum(self.y_1) / self.m,
+            sum(self.y_2) / self.m,
+            sum(self.y_3) / self.m
+        ]
+
+    def __get_dispersion_y(self):
+        return [round(self.__dispersion_calc(self.y_lists[i], self.__get_average_y()[i]), 4) for i in range(3)]
+
+    def __get_deviation(self):
+        return sqrt((2 * (2 * self.m - 2)) / self.m * (self.m - 4))
+
+    def __get_f_uv(self):
+        uv = [
+            [self.dispersion_y[0], self.dispersion_y[1]],
+            [self.dispersion_y[1], self.dispersion_y[2]],
+            [self.dispersion_y[2], self.dispersion_y[0]]
+        ]
+        return [round(max(uv[i]) / min(uv[i]), 4) for i in range(3)]
+
+    def __get_sigma_coef(self):
+        return [round(((self.m - 2) / self.m * f), 4) for f in self.f_uv]
+
+    def __get_r_uv(self):
+        return [round((abs(sigma - 1) / self.deviation), 4) for sigma in self.sigma_uv]
+
+    def __is_romanovsky_criterion_exists(self) -> bool:
+        self.average_y = self.__get_average_y()
+        self.dispersion_y = self.__get_dispersion_y()
+        self.deviation = self.__get_deviation()
+        self.f_uv = self.__get_f_uv()
+        self.sigma_uv = self.__get_sigma_coef()
+        self.r_uv = self.__get_r_uv()
+
+        for key in self.criterion_table.keys():
+            if self.m in key:
+                self.romanovsky_coef_value = self.criterion_table[key]
+                break
+            elif self.m >= 21 and self.use_max:
+                print('M too big, we will available maximum')
+                self.m = 20
+            elif self.m >= 21 and not self.use_max:
+                print('M too big. Exit!')
+                exit()
+        return max(self.r_uv) <= self.romanovsky_coef_value
+
+    def execute(self):
+        while not self.__is_romanovsky_criterion_exists():
+            for i in self.y_lists:
+                i.append((randint(self.y_min, self.y_max)))
+            self.m += 1
+
+        mx1, mx2, my = sum(self.x1) / 3, sum(self.x2) / 3, sum(self.average_y) / 3
+        a1 = sum([i ** 2 for i in self.x1]) / 3
+        a2 = sum([self.x1[i] * self.x2[i] for i in range(3)]) / 3
+        a3 = sum([i ** 2 for i in self.x2]) / 3
+
+        a11 = sum([self.x1[i] * self.average_y[i] for i in range(3)]) / 3
+        a22 = sum([self.x2[i] * self.average_y[i] for i in range(3)]) / 3
+
+        determinant = det([
+            [1, mx1, mx2],
+            [mx1, a1, a2],
+            [mx2, a2, a3]
+        ])
+        b0 = det([
+            [my, mx1, mx2],
+            [a11, a1, a2],
+            [a22, a2, a3]
+        ]) / determinant
+        b1 = det([
+            [1, my, mx2],
+            [mx1, a11, a2],
+            [mx2, a22, a3]
+        ]) / determinant
+        b2 = det([
+            [1, mx1, my],
+            [mx1, a1, a11],
+            [mx2, a2, a22]
+        ]) / determinant
+
+        delta_x1 = abs(self.x1_max - self.x1_min) / 2
+        delta_x2 = abs(self.x2_max - self.x2_min) / 2
+        x_10 = (self.x1_max + self.x1_min) / 2
+        x_20 = (self.x2_max + self.x2_min) / 2
+
+        nb0 = b0 - b1 * (x_10 / delta_x1) - b2 * (x_20 / delta_x2)
+        nb1 = b1 / delta_x1
+        nb2 = b2 / delta_x2
+
+        f_names = ['X1', 'X2', *[f"Y{i}" for i in range(1, self.m + 1)]]
+        rows = [[self.x1[i], self.x2[i], *self.y_lists[i]] for i in range(len(self.y_lists))]
+        self.__create_table(f_names, rows)
+
+        print('\n')
+
+        f_names = ['AVG Y', 'Dispersion Y', 'F_uv', 'σ_uv', 'R_uv']
+        rows = [[self.average_y[i], self.dispersion_y[i], self.f_uv[i], self.sigma_uv[i], self.r_uv[i]] for i in
+                range(len(self.y_lists))]
+        self.__create_table(f_names, rows)
+
+        print('\n')
+
+        f_names = ['NX1', 'NX2', 'AVG Y', 'Experimental']
+        rows = [
             [
-                [matr_x[0][0], matr_x[0][1], matr_y[0][0], matr_y[0][1], matr_y[0][2], matr_y[0][3], matr_y[0][4]],
-                [matr_x[1][0], matr_x[1][1], matr_y[1][0], matr_y[1][1], matr_y[1][2], matr_y[1][3], matr_y[1][4]],
-                [matr_x[2][0], matr_x[2][1], matr_y[2][0], matr_y[2][1], matr_y[2][2], matr_y[2][3], matr_y[2][4]],
-            ]
-        )
-        print("m = ", m)
-        print("Матриця планування для m = 5")
-        print(ta)
-        print("Нормованні значення X1 та X2:\n", matr_x)
-        print("Значення функції відгуку при m = {0}:\n".format(m), numpy.array(matr_y))
-        print("Середнє значення функції відгуку:\n", avey)
-        print("Матиматичне очікування X1 та X2:\n", array_mx)
-        print("Значення а:\n", array_a)
-        print("Значення aij:\n", array_aij, "\n")
-        print("Нормоване рівняння регресії")
-        print("y = {0} + {1}*x1 + {2}*x2\n".format(res[0], res[1], res[2]))
-        print("Значення дисперсій:\n", sigma)
-        print("Значення Fuv:\n", array_fuv)
-        print("Значення θuv:\n", array_tetas)
-        print("Значення Ruv:\n", array_ruv)
+                self.nx1[i],
+                self.nx2[i],
+                self.average_y[i],
+                round(nb0 + a1 * self.nx1[i] + a2 * self.nx2[i], 4)
+            ] for i in range(len(self.y_lists))
+        ]
+        self.__create_table(f_names, rows)
 
-        print("Зробимо перевірку:")
-        for i in range(len(matr_x)):
-            check = res[0] + res[1] * matr_x[i][0] + res[2] * matr_x[i][1]
-            print("y{0} = {1}".format(i, check))
-        print("\n")
-        print("Натуралізоване рівняння регресії")
-        print("y = {0} + {1}*x1 + {2}*x2\n".format(a0, a1, a2))
-        print("Зробимо перевірку:")
-        for i in range(len(matr_x2)):
-            check = a0 + a1 * matr_x2[i][0] + a2 * matr_x2[i][1]
-            print("y{0} = {1}".format(i, check))
-        return mean
-    else:
-        return mean
+        print('\n')
+
+        print('Equation')
+        print(f"y = {round(b0, 4)} + {round(b1, 4)}*x1 + {round(b2, 4)}*x2")
+
+        print('Normalized')
+        print(f"y = {round(nb0, 3)} + {round(nb1, 3)}*nx1 + {round(nb2, 3)}*nx2")
+
+        print(f"Deviation: {self.deviation}")
+        print(f"Romanovsky Criterion: {self.romanovsky_coef_value}")
 
 
-a = 0
-while True:
-    b = False
-    if inf(a, b):
-        n = input("Введіть \"Кінець\" щоб зупинити програму: ")
-        if n == "Кінець":
-            break
-    else:
-        n = input("Введіть \"Кінець\" щоб зупинити програму:")
-        if n == "Кінець":
-            break
-        print("Збільшуємо m на 1")
-        a += 1
+variant = 211
+x1_min = 10
+x2_min = -35
+
+x1_max = 60
+x2_max = 15
+
+romanovskyCriterion = RomanovskyCriterion(variant, x1_min, x2_min, x1_max, x2_max)
+romanovskyCriterion.execute()
